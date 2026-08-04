@@ -1,2 +1,5 @@
 yarn.lock
 node_modules/
+server/node_modules/
+server/.env
+server/yarn.lock
