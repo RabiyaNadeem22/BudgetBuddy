@@ -5,6 +5,8 @@ import {
   getUserProfile,
   updateUserProfile,
   deleteUser,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -150,6 +152,71 @@ router.post('/signup', registerUser);
  *         description: Server error
  */
 router.post('/signin', loginUser);
+
+/**
+ * @swagger
+ * /api/users/forgot-password:
+ *   post:
+ *     summary: Request a password reset
+ *     description: Sends password reset instructions to the user's email if the account exists. Always returns a generic success message to prevent email enumeration.
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: johndoe@example.com
+ *     responses:
+ *       200:
+ *         description: Reset instructions sent if account exists
+ *       400:
+ *         description: Missing email
+ *       500:
+ *         description: Server error
+ */
+router.post('/forgot-password', forgotPassword);
+
+/**
+ * @swagger
+ * /api/users/reset-password:
+ *   put:
+ *     summary: Reset password with token
+ *     description: Sets a new password using the token from the reset email. Returns a new JWT on success.
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - password
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: abc123def456...
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 minimum: 6
+ *                 example: newsecurepassword123
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid or expired token, or invalid password
+ *       500:
+ *         description: Server error
+ */
+router.put('/reset-password', resetPassword);
 
 /**
  * @swagger
