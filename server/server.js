@@ -8,6 +8,7 @@ import userRoutes from './routes/userRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import budgetRoutes from './routes/budgetRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 
 // Load env variables
 dotenv.config();
@@ -68,6 +69,9 @@ app.use('/api/budgets', budgetRoutes);
 
 // Mount Category Routes
 app.use('/api/categories', categoryRoutes);
+
+// Mount Report Routes
+app.use('/api/reports', reportRoutes);
 
 // Basic Health Check Route
 app.get('/api/health', (req, res) => {
