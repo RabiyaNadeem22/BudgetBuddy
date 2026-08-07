@@ -3,19 +3,49 @@ import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft } from 'lucide-react';
+import { useAppDispatch } from '../../store/hooks';
+import { setCredentials, setLoading } from '../../store/slices/authSlice';
+import { signupUser } from '../../lib/authApi';
 
 export function Signup() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     currency: 'USD',
   });
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/app');
+    setError('');
+    setIsSubmitting(true);
+    dispatch(setLoading(true));
+
+    try {
+      const response = await signupUser({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      dispatch(
+        setCredentials({
+          user: { id: response._id, name: response.name, email: response.email },
+          token: response.token,
+        })
+      );
+      localStorage.setItem('token', response.token);
+      navigate('/app');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Signup failed');
+    } finally {
+      setIsSubmitting(false);
+      dispatch(setLoading(false));
+    }
   };
 
   return (
@@ -76,8 +106,10 @@ export function Signup() {
           </select>
         </div>
 
-        <Button type="submit" className="w-full" size="lg">
-          Create Account
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+        <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+          {isSubmitting ? 'Creating Account...' : 'Create Account'}
         </Button>
 
         <p className="text-center text-sm text-muted-foreground">

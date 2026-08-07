@@ -1,11 +1,15 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { User, LogOut, Save } from 'lucide-react';
+import { useAppDispatch } from '../../store/hooks';
+import { clearCredentials } from '../../store/slices/authSlice';
 
 export function ProfileSettings() {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [formData, setFormData] = useState({
     name: 'John Doe',
     email: 'john@example.com',
@@ -18,6 +22,12 @@ export function ProfileSettings() {
     e.preventDefault();
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    dispatch(clearCredentials());
+    navigate('/');
   };
 
   return (
@@ -132,12 +142,10 @@ export function ProfileSettings() {
           <p className="text-sm text-muted-foreground">
             Once you sign out, you'll need to log in again to access your account.
           </p>
-          <Link to="/">
-            <Button variant="destructive" className="w-full">
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </Button>
-          </Link>
+          <Button variant="destructive" className="w-full" onClick={handleLogout}>
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -3,17 +3,46 @@ import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft } from 'lucide-react';
+import { useAppDispatch } from '../../store/hooks';
+import { setCredentials, setLoading } from '../../store/slices/authSlice';
+import { loginUser } from '../../lib/authApi';
 
 export function Login() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/app');
+    setError('');
+    setIsSubmitting(true);
+    dispatch(setLoading(true));
+
+    try {
+      const response = await loginUser({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      dispatch(
+        setCredentials({
+          user: { id: response._id, name: response.name, email: response.email },
+          token: response.token,
+        })
+      );
+      localStorage.setItem('token', response.token);
+      navigate('/app');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsSubmitting(false);
+      dispatch(setLoading(false));
+    }
   };
 
   return (
@@ -54,8 +83,10 @@ export function Login() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full" size="lg">
-          Sign In
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+        <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+          {isSubmitting ? 'Signing In...' : 'Sign In'}
         </Button>
 
         <p className="text-center text-sm text-muted-foreground">
