@@ -3,14 +3,27 @@ import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft, Mail } from 'lucide-react';
+import { apiClient } from '../../lib/apiClient';
 
 export function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      await apiClient.post('/api/users/forgot-password', { email });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -62,8 +75,10 @@ export function ForgotPassword() {
           required
         />
 
-        <Button type="submit" className="w-full" size="lg">
-          Send Reset Instructions
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+        <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+          {isSubmitting ? 'Sending...' : 'Send Reset Instructions'}
         </Button>
       </form>
     </div>

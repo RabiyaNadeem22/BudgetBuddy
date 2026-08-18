@@ -4,6 +4,7 @@ import {
   loginUser,
   getUserProfile,
   updateUserProfile,
+  updatePassword,
   deleteUser,
   forgotPassword,
   resetPassword,
@@ -217,6 +218,50 @@ router.post('/forgot-password', forgotPassword);
  *         description: Server error
  */
 router.put('/reset-password', resetPassword);
+
+/**
+ * @swagger
+ * /api/users/password:
+ *   put:
+ *     summary: Update password for the authenticated user
+ *     description: Changes the signed-in user's password after verifying the current password.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *               - confirmPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: currentpassword123
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: newsecurepassword123
+ *               confirmPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: newsecurepassword123
+ *     responses:
+ *       200:
+ *         description: Password updated successfully
+ *       400:
+ *         description: Missing fields or password mismatch
+ *       401:
+ *         description: Current password is incorrect
+ *       500:
+ *         description: Server error
+ */
+router.put('/password', protect, updatePassword);
 
 /**
  * @swagger

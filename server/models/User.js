@@ -44,6 +44,24 @@ const userSchema = new mongoose.Schema(
         type: Number,
         default: 10000,
       },
+      notificationPreferences: {
+        budgetAlerts: {
+          email: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+        },
+        largeTransactions: {
+          email: { type: Boolean, default: true },
+          push: { type: Boolean, default: false },
+        },
+        monthlySummary: {
+          email: { type: Boolean, default: true },
+          push: { type: Boolean, default: false },
+        },
+        savingsGoals: {
+          email: { type: Boolean, default: false },
+          push: { type: Boolean, default: true },
+        },
+      },
     },
     resetPasswordToken: {
       type: String,

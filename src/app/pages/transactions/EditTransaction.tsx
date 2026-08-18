@@ -1,37 +1,128 @@
 import { useNavigate, useParams, Link } from 'react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft, Trash2 } from 'lucide-react';
+import { apiClient } from '../../lib/apiClient';
+import { Category } from '../settings/CategoryManager';
 
-const categories = {
-  income: ['Salary', 'Freelance', 'Investment', 'Other Income'],
-  expense: ['Food & Dining', 'Transportation', 'Shopping', 'Entertainment', 'Bills', 'Healthcare', 'Education', 'Other'],
-};
+interface Transaction {
+  _id: string;
+  name: string;
+  amount: number;
+  type: 'income' | 'expense';
+  category: string; // ID string
+  date: string;
+  notes?: string;
+}
 
 export function EditTransaction() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
     type: 'expense' as 'income' | 'expense',
-    amount: '85.50',
-    category: 'Food & Dining',
-    name: 'Whole Foods',
-    date: '2026-04-24',
-    notes: 'Weekly groceries',
+    amount: '',
+    category: '',
+    name: '',
+    date: '',
+    notes: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      try {
+        setLoading(true);
+        // Fetch transaction and categories list
+        const [transactionData, categoriesData] = await Promise.all([
+          apiClient.get<any>(`/api/transactions/${id}`),
+          apiClient.get<Category[]>('/api/categories'),
+        ]);
+
+        setCategories(categoriesData);
+
+        // Populate form data
+        setFormData({
+          type: transactionData.type,
+          amount: String(transactionData.amount),
+          category: transactionData.category?._id || transactionData.category || '',
+          name: transactionData.name,
+          date: new Date(transactionData.date).toISOString().split('T')[0],
+          notes: transactionData.notes || '',
+        });
+      } catch (err) {
+        console.error('Failed to load transaction data:', err);
+        setError('Failed to load transaction details.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/app/transactions');
+    setError('');
+
+    if (!formData.category) {
+      setError('Please select a category.');
+      return;
+    }
+
+    const amountNum = parseFloat(formData.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Amount must be a positive number.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await apiClient.put(`/api/transactions/${id}`, {
+        name: formData.name,
+        amount: amountNum,
+        type: formData.type,
+        category: formData.category,
+        date: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
+        notes: formData.notes,
+      });
+      navigate('/app/transactions');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update transaction');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = () => {
-    navigate('/app/transactions');
+  const handleDelete = async () => {
+    setIsSubmitting(true);
+    try {
+      await apiClient.delete(`/api/transactions/${id}`);
+      navigate('/app/transactions');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete transaction');
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const filteredCategories = categories.filter(cat => cat.type === formData.type);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-20 md:pb-6">
@@ -46,11 +137,18 @@ export function EditTransaction() {
           variant="destructive"
           size="sm"
           onClick={() => setShowDeleteConfirm(true)}
+          disabled={isSubmitting}
         >
           <Trash2 className="w-4 h-4" />
           Delete
         </Button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl">
+          {error}
+        </div>
+      )}
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -65,6 +163,7 @@ export function EditTransaction() {
                     ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-muted-foreground'
                 }`}
+                disabled={isSubmitting}
               >
                 <span className="font-medium">Expense</span>
               </button>
@@ -76,6 +175,7 @@ export function EditTransaction() {
                     ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-muted-foreground'
                 }`}
+                disabled={isSubmitting}
               >
                 <span className="font-medium">Income</span>
               </button>
@@ -90,6 +190,7 @@ export function EditTransaction() {
             value={formData.amount}
             onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
             required
+            disabled={isSubmitting}
           />
 
           <Input
@@ -99,6 +200,7 @@ export function EditTransaction() {
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
+            disabled={isSubmitting}
           />
 
           <div>
@@ -111,10 +213,12 @@ export function EditTransaction() {
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="w-full px-4 py-2.5 rounded-xl bg-input border-2 border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               required
+              disabled={isSubmitting}
             >
-              {categories[formData.type].map((category) => (
-                <option key={category} value={category}>
-                  {category}
+              <option value="">Select a category</option>
+              {filteredCategories.map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.name}
                 </option>
               ))}
             </select>
@@ -126,6 +230,7 @@ export function EditTransaction() {
             value={formData.date}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             required
+            disabled={isSubmitting}
           />
 
           <div>
@@ -139,15 +244,16 @@ export function EditTransaction() {
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-4 py-2.5 rounded-xl bg-input border-2 border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none"
+              disabled={isSubmitting}
             />
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button type="submit" className="flex-1">
-              Save Changes
+            <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
             </Button>
             <Link to="/app/transactions" className="flex-1">
-              <Button type="button" variant="outline" className="w-full">
+              <Button type="button" variant="outline" className="w-full" disabled={isSubmitting}>
                 Cancel
               </Button>
             </Link>
@@ -156,7 +262,7 @@ export function EditTransaction() {
       </Card>
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
           <Card className="max-w-md w-full">
             <div className="space-y-4">
               <h3 className="text-xl font-bold">Delete Transaction?</h3>
@@ -168,13 +274,15 @@ export function EditTransaction() {
                   variant="destructive"
                   className="flex-1"
                   onClick={handleDelete}
+                  disabled={isSubmitting}
                 >
-                  Delete
+                  {isSubmitting ? 'Deleting...' : 'Delete'}
                 </Button>
                 <Button
                   variant="outline"
                   className="flex-1"
                   onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>

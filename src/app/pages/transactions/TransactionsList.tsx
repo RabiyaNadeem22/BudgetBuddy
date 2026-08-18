@@ -1,43 +1,82 @@
 import { Link } from 'react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Plus, Search, Filter, TrendingUp, TrendingDown, Edit } from 'lucide-react';
+import { Plus, Search, TrendingUp, TrendingDown, Edit } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
+import { apiClient } from '../../lib/apiClient';
 
-const mockTransactions = [
-  { id: 1, name: 'Salary - April', amount: 4500.00, category: 'Income', date: '2026-04-23', type: 'income', notes: 'Monthly salary' },
-  { id: 2, name: 'Whole Foods', amount: -85.50, category: 'Food & Dining', date: '2026-04-24', type: 'expense', notes: 'Weekly groceries' },
-  { id: 3, name: 'Uber', amount: -22.30, category: 'Transportation', date: '2026-04-23', type: 'expense', notes: 'Ride to office' },
-  { id: 4, name: 'Netflix', amount: -15.99, category: 'Entertainment', date: '2026-04-22', type: 'expense', notes: 'Monthly subscription' },
-  { id: 5, name: 'Amazon', amount: -156.80, category: 'Shopping', date: '2026-04-22', type: 'expense', notes: 'Electronics' },
-  { id: 6, name: 'Freelance Project', amount: 800.00, category: 'Income', date: '2026-04-20', type: 'income', notes: 'Website redesign' },
-  { id: 7, name: 'Starbucks', amount: -8.50, category: 'Food & Dining', date: '2026-04-20', type: 'expense', notes: 'Coffee' },
-  { id: 8, name: 'Gas Station', amount: -45.00, category: 'Transportation', date: '2026-04-19', type: 'expense', notes: 'Fuel' },
-  { id: 9, name: 'Rent', amount: -1200.00, category: 'Bills', date: '2026-04-15', type: 'expense', notes: 'Monthly rent' },
-  { id: 10, name: 'Electricity Bill', amount: -78.50, category: 'Bills', date: '2026-04-14', type: 'expense', notes: 'Monthly bill' },
-];
+interface Category {
+  _id: string;
+  name: string;
+  color: string;
+  type: string;
+}
+
+interface Transaction {
+  _id: string;
+  name: string;
+  amount: number;
+  type: 'income' | 'expense';
+  category: Category;
+  date: string;
+  notes?: string;
+}
 
 export function TransactionsList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const filteredTransactions = mockTransactions.filter(transaction => {
-    const matchesSearch = transaction.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         transaction.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterType === 'all' || transaction.type === filterType;
-    return matchesSearch && matchesFilter;
-  });
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      let path = '/api/transactions';
+      const params = new URLSearchParams();
 
-  const groupedTransactions = filteredTransactions.reduce((groups, transaction) => {
-    const date = transaction.date;
-    if (!groups[date]) {
-      groups[date] = [];
+      if (filterType !== 'all') {
+        params.append('type', filterType);
+      }
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+
+      const queryString = params.toString();
+      if (queryString) {
+        path += `?${queryString}`;
+      }
+
+      const data = await apiClient.get<Transaction[]>(path);
+      setTransactions(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load transactions');
+    } finally {
+      setLoading(false);
     }
-    groups[date].push(transaction);
+  };
+
+  useEffect(() => {
+    // Debounce/delay fetch slightly for search query if needed, or simple query on state change
+    const timer = setTimeout(() => {
+      fetchTransactions();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, filterType]);
+
+  // Group transactions by date
+  const groupedTransactions = transactions.reduce((groups, transaction) => {
+    // Standardize date key to YYYY-MM-DD
+    const dateKey = new Date(transaction.date).toISOString().split('T')[0];
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    groups[dateKey].push(transaction);
     return groups;
-  }, {} as Record<string, typeof mockTransactions>);
+  }, {} as Record<string, Transaction[]>);
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
@@ -55,6 +94,12 @@ export function TransactionsList() {
           </Link>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl">
+          {error}
+        </div>
+      )}
 
       <Card>
         <div className="space-y-4">
@@ -95,55 +140,69 @@ export function TransactionsList() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            {Object.entries(groupedTransactions).map(([date, transactions]) => (
-              <div key={date}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-sm text-muted-foreground">{formatDate(date)}</h3>
-                  <span className="text-sm font-medium">
-                    {formatCurrency(
-                      transactions.reduce((sum, t) => sum + t.amount, 0)
-                    )}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {transactions.map((transaction) => (
-                    <Link
-                      key={transaction.id}
-                      to={`/app/transactions/edit/${transaction.id}`}
-                      className="flex items-center justify-between p-4 rounded-xl hover:bg-muted transition-colors group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          transaction.type === 'income' ? 'bg-primary/10' : 'bg-muted'
-                        }`}>
-                          {transaction.type === 'income' ? (
-                            <TrendingUp className="w-5 h-5 text-primary" />
-                          ) : (
-                            <TrendingDown className="w-5 h-5 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium">{transaction.name}</p>
-                          <p className="text-sm text-muted-foreground">{transaction.category}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <p className={`font-semibold ${
-                            transaction.type === 'income' ? 'text-primary' : 'text-foreground'
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No transactions found.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(groupedTransactions).map(([date, dateTransactions]) => (
+                <div key={date}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-sm text-muted-foreground">{formatDate(date)}</h3>
+                    <span className="text-sm font-medium">
+                      {formatCurrency(
+                        dateTransactions.reduce((sum, t) => {
+                          return sum + (t.type === 'income' ? t.amount : -t.amount);
+                        }, 0)
+                      )}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {dateTransactions.map((transaction) => (
+                      <Link
+                        key={transaction._id}
+                        to={`/app/transactions/edit/${transaction._id}`}
+                        className="flex items-center justify-between p-4 rounded-xl hover:bg-muted transition-colors group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            transaction.type === 'income' ? 'bg-primary/10' : 'bg-muted'
                           }`}>
-                            {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.amount)}
-                          </p>
+                            {transaction.type === 'income' ? (
+                              <TrendingUp className="w-5 h-5 text-primary" />
+                            ) : (
+                              <TrendingDown className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium">{transaction.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {transaction.category?.name || 'Uncategorized'}
+                            </p>
+                          </div>
                         </div>
-                        <Edit className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </Link>
-                  ))}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className={`font-semibold ${
+                              transaction.type === 'income' ? 'text-primary' : 'text-foreground'
+                            }`}>
+                              {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                            </p>
+                          </div>
+                          <Edit className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
     </div>

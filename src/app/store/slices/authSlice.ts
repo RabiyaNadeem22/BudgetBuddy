@@ -13,10 +13,12 @@ type AuthState = {
   loading: boolean;
 };
 
+const token = localStorage.getItem('token');
+
 const initialState: AuthState = {
   user: null,
-  token: null,
-  isAuthenticated: false,
+  token: token,
+  isAuthenticated: !!token,
   loading: false,
 };
 
@@ -33,6 +35,9 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.loading = false;
     },
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+    },
     clearCredentials: (state) => {
       state.user = null;
       state.token = null;
@@ -45,5 +50,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, clearCredentials, setLoading } = authSlice.actions;
+export const { setCredentials, setUser, clearCredentials, setLoading } = authSlice.actions;
 export default authSlice.reducer;

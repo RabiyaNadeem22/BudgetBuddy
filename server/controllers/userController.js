@@ -19,6 +19,25 @@ const generateToken = (id) => {
   });
 };
 
+const mergeNotificationPreferences = (current = {}, incoming = {}) => ({
+  budgetAlerts: {
+    email: incoming.budgetAlerts?.email ?? current.budgetAlerts?.email ?? true,
+    push: incoming.budgetAlerts?.push ?? current.budgetAlerts?.push ?? true,
+  },
+  largeTransactions: {
+    email: incoming.largeTransactions?.email ?? current.largeTransactions?.email ?? true,
+    push: incoming.largeTransactions?.push ?? current.largeTransactions?.push ?? false,
+  },
+  monthlySummary: {
+    email: incoming.monthlySummary?.email ?? current.monthlySummary?.email ?? true,
+    push: incoming.monthlySummary?.push ?? current.monthlySummary?.push ?? false,
+  },
+  savingsGoals: {
+    email: incoming.savingsGoals?.email ?? current.savingsGoals?.email ?? false,
+    push: incoming.savingsGoals?.push ?? current.savingsGoals?.push ?? true,
+  },
+});
+
 // @desc    Register a new user (Signup)
 // @route   POST /api/users/signup
 // @access  Public
@@ -144,6 +163,10 @@ export const updateUserProfile = async (req, res) => {
             req.body.settings.savingsGoalTarget !== undefined
               ? req.body.settings.savingsGoalTarget
               : user.settings.savingsGoalTarget,
+          notificationPreferences: mergeNotificationPreferences(
+            user.settings.notificationPreferences,
+            req.body.settings.notificationPreferences
+          ),
         };
       }
 
@@ -165,6 +188,45 @@ export const updateUserProfile = async (req, res) => {
     } else {
       res.status(404).json({ message: 'User not found' });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update password for authenticated user
+// @route   PUT /api/users/password
+// @access  Private
+export const updatePassword = async (req, res) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  try {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: 'Please provide current password, new password, and confirmation' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: 'New password and confirmation do not match' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password updated successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

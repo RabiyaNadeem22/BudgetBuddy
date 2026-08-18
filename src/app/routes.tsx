@@ -8,6 +8,7 @@ import { Splash } from "./pages/auth/Splash";
 import { Signup } from "./pages/auth/Signup";
 import { Login } from "./pages/auth/Login";
 import { ForgotPassword } from "./pages/auth/ForgotPassword";
+import { ResetPassword } from "./pages/auth/ResetPassword";
 
 // Dashboard screens
 import { Dashboard } from "./pages/dashboard/Dashboard";
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
           { path: "signup", Component: Signup },
           { path: "login", Component: Login },
           { path: "forgot-password", Component: ForgotPassword },
+          { path: "reset-password", Component: ResetPassword },
         ],
       },
       {

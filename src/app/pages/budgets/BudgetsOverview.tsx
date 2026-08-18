@@ -1,64 +1,74 @@
 import { Link } from 'react-router';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Plus, AlertCircle, TrendingUp } from 'lucide-react';
+import { Plus, AlertCircle, TrendingUp, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { apiClient } from '../../lib/apiClient';
 
-const budgets = [
-  {
-    id: 1,
-    category: 'Food & Dining',
-    spent: 850,
-    budget: 1000,
-    percentage: 85,
-    color: '#4CAF50',
-    status: 'good'
-  },
-  {
-    id: 2,
-    category: 'Transportation',
-    spent: 420,
-    budget: 500,
-    percentage: 84,
-    color: '#3B82F6',
-    status: 'good'
-  },
-  {
-    id: 3,
-    category: 'Shopping',
-    spent: 680,
-    budget: 600,
-    percentage: 113,
-    color: '#F59E0B',
-    status: 'over'
-  },
-  {
-    id: 4,
-    category: 'Entertainment',
-    spent: 320,
-    budget: 400,
-    percentage: 80,
-    color: '#8B5CF6',
-    status: 'good'
-  },
-  {
-    id: 5,
-    category: 'Bills',
-    spent: 1200,
-    budget: 1200,
-    percentage: 100,
-    color: '#EC4899',
-    status: 'warning'
-  },
-];
+interface Category {
+  _id: string;
+  name: string;
+  color: string;
+  type: string;
+}
 
-const totalBudget = budgets.reduce((sum, b) => sum + b.budget, 0);
-const totalSpent = budgets.reduce((sum, b) => sum + b.spent, 0);
-const overallPercentage = (totalSpent / totalBudget) * 100;
+interface Budget {
+  _id: string;
+  category: Category;
+  budget: number;
+  period: string;
+  spent: number;
+  percentage: number;
+  status: 'good' | 'warning' | 'over';
+}
 
 export function BudgetsOverview() {
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchBudgets = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.get<Budget[]>('/api/budgets');
+      setBudgets(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load budgets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBudgets();
+  }, []);
+
+  const handleDeleteBudget = async (id: string) => {
+    if (!window.confirm('Are you sure you want to remove this budget limit?')) {
+      return;
+    }
+    try {
+      await apiClient.delete(`/api/budgets/${id}`);
+      setBudgets(budgets.filter(b => b._id !== id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete budget limit');
+    }
+  };
+
+  const totalBudget = budgets.reduce((sum, b) => sum + b.budget, 0);
+  const totalSpent = budgets.reduce((sum, b) => sum + b.spent, 0);
+  const overallPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const overBudgetCount = budgets.filter(b => b.percentage > 100).length;
   const warningCount = budgets.filter(b => b.percentage >= 80 && b.percentage <= 100).length;
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
@@ -71,6 +81,12 @@ export function BudgetsOverview() {
           </Button>
         </Link>
       </div>
+
+      {error && (
+        <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl">
+          {error}
+        </div>
+      )}
 
       {/* Summary Card */}
       <Card variant="elevated" className="bg-gradient-to-br from-primary to-primary/80">
@@ -92,7 +108,7 @@ export function BudgetsOverview() {
               <div>
                 <p className="text-primary-foreground/80 text-sm">Remaining</p>
                 <p className="text-xl font-semibold text-primary-foreground">
-                  {formatCurrency(totalBudget - totalSpent)}
+                  {formatCurrency(Math.max(0, totalBudget - totalSpent))}
                 </p>
               </div>
               <div>
@@ -136,58 +152,74 @@ export function BudgetsOverview() {
 
       {/* Budget List */}
       <div className="space-y-4">
-        {budgets.map((budget) => (
-          <Card key={budget.id}>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: budget.color }}
-                    />
-                    <div>
-                      <h3 className="font-semibold">{budget.category}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCurrency(budget.spent)} of {formatCurrency(budget.budget)}
-                      </p>
+        {budgets.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground bg-card border rounded-xl">
+            No budget limits set. Click Create Budget to set up category spending controls.
+          </div>
+        ) : (
+          budgets.map((budget) => (
+            <Card key={budget._id}>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: budget.category?.color || '#94A3B8' }}
+                      />
+                      <div>
+                        <h3 className="font-semibold">{budget.category?.name || 'Unknown Category'}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(budget.spent)} of {formatCurrency(budget.budget)} ({budget.period})
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className={`text-lg font-bold ${
+                          budget.percentage > 100 ? 'text-destructive' :
+                          budget.percentage >= 80 ? 'text-yellow-500' : 'text-primary'
+                        }`}>
+                          {budget.percentage}%
+                        </p>
+                        {budget.percentage > 100 && (
+                          <p className="text-xs text-destructive">
+                            {formatCurrency(budget.spent - budget.budget)} over
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteBudget(budget._id)}
+                        className="hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-lg font-bold ${
-                      budget.percentage > 100 ? 'text-destructive' :
-                      budget.percentage >= 80 ? 'text-yellow-500' : 'text-primary'
-                    }`}>
-                      {budget.percentage}%
-                    </p>
-                    {budget.percentage > 100 && (
-                      <p className="text-xs text-destructive">
-                        {formatCurrency(budget.spent - budget.budget)} over
-                      </p>
-                    )}
-                  </div>
-                </div>
 
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      budget.percentage > 100 ? 'bg-destructive' :
-                      budget.percentage >= 80 ? 'bg-yellow-500' : 'bg-primary'
-                    }`}
-                    style={{ width: `${Math.min(budget.percentage, 100)}%` }}
-                  />
-                </div>
-
-                {budget.percentage < 80 && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    <span>{formatCurrency(budget.budget - budget.spent)} remaining</span>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        budget.percentage > 100 ? 'bg-destructive' :
+                        budget.percentage >= 80 ? 'bg-yellow-500' : 'bg-primary'
+                      }`}
+                      style={{ width: `${Math.min(budget.percentage, 100)}%` }}
+                    />
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+
+                  {budget.percentage < 80 && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <TrendingUp className="w-4 h-4 text-primary" />
+                      <span>{formatCurrency(Math.max(0, budget.budget - budget.spent))} remaining</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

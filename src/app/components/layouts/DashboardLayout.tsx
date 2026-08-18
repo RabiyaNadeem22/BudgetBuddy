@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard,
   Receipt,
@@ -8,7 +8,10 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { setUser, clearCredentials } from '../../store/slices/authSlice';
+import { apiClient } from '../../lib/apiClient';
 
 const navigation = [
   { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
@@ -20,7 +23,45 @@ const navigation = [
 
 export function DashboardLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, token, user } = useAppSelector((state) => state.auth);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    if (isAuthenticated && token && !user) {
+      apiClient.get<{ _id: string; name: string; email: string }>('/api/users/profile')
+        .then((res) => {
+          dispatch(setUser({ id: res._id, name: res.name, email: res.email }));
+        })
+        .catch((err) => {
+          console.error('Failed to load user profile:', err);
+          localStorage.removeItem('token');
+          dispatch(clearCredentials());
+          navigate('/login', { replace: true });
+        });
+    }
+  }, [isAuthenticated, token, user, navigate, dispatch]);
+
+  if (!isAuthenticated || !token) {
+    return null;
+  }
+
+  if (token && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground animate-pulse">Loading secure profile details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">

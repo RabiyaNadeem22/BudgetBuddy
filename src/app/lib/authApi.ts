@@ -48,3 +48,13 @@ export async function loginUser(payload: { email: string; password: string }) {
     body: JSON.stringify(payload),
   });
 }
+
+export async function updatePassword(payload: { currentPassword: string; newPassword: string; confirmPassword: string }, token: string) {
+  return request<{ message: string }>('/api/users/password', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}

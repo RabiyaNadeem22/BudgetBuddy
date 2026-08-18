@@ -1,31 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Plus, Edit2, Trash2, Check, X } from 'lucide-react';
+import { apiClient } from '../../lib/apiClient';
 
-interface Category {
-  id: number;
+export interface Category {
+  _id: string;
+  userId?: string | null;
   name: string;
   color: string;
   type: 'income' | 'expense';
 }
 
-const initialCategories: Category[] = [
-  { id: 1, name: 'Salary', color: '#4CAF50', type: 'income' },
-  { id: 2, name: 'Freelance', color: '#3B82F6', type: 'income' },
-  { id: 3, name: 'Food & Dining', color: '#F59E0B', type: 'expense' },
-  { id: 4, name: 'Transportation', color: '#8B5CF6', type: 'expense' },
-  { id: 5, name: 'Shopping', color: '#EC4899', type: 'expense' },
-  { id: 6, name: 'Entertainment', color: '#10B981', type: 'expense' },
-  { id: 7, name: 'Bills', color: '#06B6D4', type: 'expense' },
-];
-
 const colorOptions = ['#4CAF50', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#10B981', '#06B6D4', '#6366F1'];
 
 export function CategoryManager() {
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -35,35 +29,76 @@ export function CategoryManager() {
     type: 'expense' as 'income' | 'expense',
   });
 
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.get<Category[]>('/api/categories');
+      setCategories(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   const handleEdit = (category: Category) => {
-    setEditingId(category.id);
+    setEditingId(category._id);
     setEditName(category.name);
     setEditColor(category.color);
   };
 
-  const handleSaveEdit = (id: number) => {
-    setCategories(categories.map(cat =>
-      cat.id === id ? { ...cat, name: editName, color: editColor } : cat
-    ));
-    setEditingId(null);
+  const handleSaveEdit = async (id: string) => {
+    if (!editName.trim()) return;
+    try {
+      const updated = await apiClient.put<Category>(`/api/categories/${id}`, {
+        name: editName,
+        color: editColor,
+      });
+      setCategories(categories.map(cat => cat._id === id ? updated : cat));
+      setEditingId(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update category');
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setCategories(categories.filter(cat => cat.id !== id));
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this category? Any associated budgets will be cleared.')) {
+      return;
+    }
+    try {
+      await apiClient.delete(`/api/categories/${id}`);
+      setCategories(categories.filter(cat => cat._id !== id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete category');
+    }
   };
 
-  const handleAddCategory = () => {
-    const newCat: Category = {
-      id: Math.max(...categories.map(c => c.id)) + 1,
-      ...newCategory,
-    };
-    setCategories([...categories, newCat]);
-    setNewCategory({ name: '', color: '#4CAF50', type: 'expense' });
-    setShowAddForm(false);
+  const handleAddCategory = async () => {
+    if (!newCategory.name.trim()) return;
+    try {
+      const created = await apiClient.post<Category>('/api/categories', newCategory);
+      setCategories([...categories, created]);
+      setNewCategory({ name: '', color: '#4CAF50', type: 'expense' });
+      setShowAddForm(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add category');
+    }
   };
 
   const incomeCategories = categories.filter(c => c.type === 'income');
   const expenseCategories = categories.filter(c => c.type === 'expense');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20 md:pb-6">
@@ -77,6 +112,12 @@ export function CategoryManager() {
           Add Category
         </Button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl">
+          {error}
+        </div>
+      )}
 
       {showAddForm && (
         <Card>
@@ -137,7 +178,7 @@ export function CategoryManager() {
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={handleAddCategory} disabled={!newCategory.name}>
+              <Button onClick={handleAddCategory} disabled={!newCategory.name.trim()}>
                 Add Category
               </Button>
               <Button variant="outline" onClick={() => setShowAddForm(false)}>
@@ -156,20 +197,20 @@ export function CategoryManager() {
           <div className="space-y-2">
             {incomeCategories.map((category) => (
               <div
-                key={category.id}
+                key={category._id}
                 className="flex items-center justify-between p-3 rounded-xl hover:bg-muted transition-colors"
               >
-                {editingId === category.id ? (
+                {editingId === category._id ? (
                   <>
                     <div className="flex items-center gap-3 flex-1">
                       <select
                         value={editColor}
                         onChange={(e) => setEditColor(e.target.value)}
-                        className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer"
+                        className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer text-foreground bg-background"
                         style={{ backgroundColor: editColor }}
                       >
                         {colorOptions.map((color) => (
-                          <option key={color} value={color}>
+                          <option key={color} value={color} className="text-black bg-white">
                             {color}
                           </option>
                         ))}
@@ -181,7 +222,7 @@ export function CategoryManager() {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleSaveEdit(category.id)}>
+                      <Button size="sm" onClick={() => handleSaveEdit(category._id)}>
                         <Check className="w-4 h-4" />
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
@@ -197,15 +238,22 @@ export function CategoryManager() {
                         style={{ backgroundColor: category.color }}
                       />
                       <span className="font-medium">{category.name}</span>
+                      {!category.userId && (
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                          Default
+                        </span>
+                      )}
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleEdit(category)}>
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDelete(category.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
+                    {category.userId && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(category)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(category._id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -222,20 +270,20 @@ export function CategoryManager() {
           <div className="space-y-2">
             {expenseCategories.map((category) => (
               <div
-                key={category.id}
+                key={category._id}
                 className="flex items-center justify-between p-3 rounded-xl hover:bg-muted transition-colors"
               >
-                {editingId === category.id ? (
+                {editingId === category._id ? (
                   <>
                     <div className="flex items-center gap-3 flex-1">
                       <select
                         value={editColor}
                         onChange={(e) => setEditColor(e.target.value)}
-                        className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer"
+                        className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer text-foreground bg-background"
                         style={{ backgroundColor: editColor }}
                       >
                         {colorOptions.map((color) => (
-                          <option key={color} value={color}>
+                          <option key={color} value={color} className="text-black bg-white">
                             {color}
                           </option>
                         ))}
@@ -247,7 +295,7 @@ export function CategoryManager() {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleSaveEdit(category.id)}>
+                      <Button size="sm" onClick={() => handleSaveEdit(category._id)}>
                         <Check className="w-4 h-4" />
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
@@ -263,15 +311,22 @@ export function CategoryManager() {
                         style={{ backgroundColor: category.color }}
                       />
                       <span className="font-medium">{category.name}</span>
+                      {!category.userId && (
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                          Default
+                        </span>
+                      )}
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleEdit(category)}>
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDelete(category.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
+                    {category.userId && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(category)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(category._id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
