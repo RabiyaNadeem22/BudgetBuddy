@@ -83,7 +83,7 @@ export function CreateBudget() {
         </div>
       )}
 
-      <Card>
+      <Card className="p-6 md:p-8 shadow-sm border border-border/70">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block mb-3 text-sm font-medium">Select Category</label>
@@ -141,12 +141,16 @@ export function CreateBudget() {
               id="period"
               value={formData.period}
               onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl bg-input border-2 border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+              className="w-full px-4 py-2.5 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+              style={{
+                backgroundColor: 'var(--input-background, var(--card))',
+                color: 'var(--foreground)',
+              }}
               disabled={isSubmitting}
             >
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
+              <option value="weekly" style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}>Weekly</option>
+              <option value="monthly" style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}>Monthly</option>
+              <option value="yearly" style={{ backgroundColor: 'var(--card)', color: 'var(--foreground)' }}>Yearly</option>
             </select>
           </div>
 

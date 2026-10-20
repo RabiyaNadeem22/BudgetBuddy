@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router';
 import { useState } from 'react';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { ArrowLeft } from 'lucide-react';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Card } from '../../components/ui/card';
+import { ArrowLeft, LogIn } from 'lucide-react';
 import { useAppDispatch } from '../../store/hooks';
 import { setCredentials, setLoading } from '../../store/slices/authSlice';
 import { loginUser } from '../../lib/authApi';
@@ -46,28 +47,34 @@ export function Login() {
   };
 
   return (
-    <div className="space-y-6">
-      <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
+    <Card className="p-8 md:p-10 rounded-3xl border border-border/70 shadow-2xl bg-card/85 backdrop-blur-xl space-y-6">
+      <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" />
-        Back
+        Back to home
       </Link>
 
       <div>
-        <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-        <p className="text-muted-foreground">Sign in to continue to BudgetBuddy</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Welcome Back</h1>
+        <p className="text-sm text-muted-foreground mt-1">Sign in to your BudgetBuddy account</p>
       </div>
+
+      {error ? (
+        <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium animate-fadeIn">
+          {error}
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Email"
+          label="Email Address"
           type="email"
-          placeholder="john@example.com"
+          placeholder="name@example.com"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           required
         />
 
-        <div>
+        <div className="space-y-1">
           <Input
             label="Password"
             type="password"
@@ -76,26 +83,26 @@ export function Login() {
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             required
           />
-          <div className="mt-2 text-right">
-            <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+          <div className="text-right pt-1">
+            <Link to="/forgot-password" className="text-xs text-primary font-medium hover:underline">
               Forgot password?
             </Link>
           </div>
         </div>
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-        <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+        <Button type="submit" className="w-full mt-2 h-10" size="lg" disabled={isSubmitting}>
+          <LogIn className="w-4 h-4" />
           {isSubmitting ? 'Signing In...' : 'Sign In'}
         </Button>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground pt-2">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-primary hover:underline">
+          <Link to="/signup" className="text-primary font-medium hover:underline">
             Sign up
           </Link>
         </p>
       </form>
-    </div>
+    </Card>
   );
 }
+

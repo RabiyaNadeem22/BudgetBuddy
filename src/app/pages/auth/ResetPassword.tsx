@@ -1,8 +1,9 @@
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useState } from 'react';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Card } from '../../components/ui/card';
+import { ArrowLeft, CheckCircle2, Lock } from 'lucide-react';
 import { apiClient } from '../../lib/apiClient';
 
 export function ResetPassword() {
@@ -55,48 +56,54 @@ export function ResetPassword() {
 
   if (success) {
     return (
-      <div className="space-y-6 text-center">
+      <Card className="p-8 md:p-10 rounded-3xl border border-border/70 shadow-2xl bg-card/85 backdrop-blur-xl space-y-6 text-center">
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <CheckCircle2 className="w-8 h-8 text-primary" />
+          <div className="w-16 h-16 bg-primary/15 rounded-2xl flex items-center justify-center text-primary shadow-sm">
+            <CheckCircle2 className="w-8 h-8" />
           </div>
         </div>
 
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Password Reset Successful</h1>
-          <p className="text-muted-foreground font-medium">
-            Your password has been successfully reset! Redirecting to Sign In...
+        <div className="space-y-1.5">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Password Reset Successful</h1>
+          <p className="text-sm text-muted-foreground">
+            Your password has been successfully updated. Redirecting to Sign In...
           </p>
         </div>
 
-        <Link to="/login">
-          <Button className="w-full">
+        <Link to="/login" className="block w-full pt-2">
+          <Button className="w-full h-10">
             Go to Sign In
           </Button>
         </Link>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Link to="/login" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
+    <Card className="p-8 md:p-10 rounded-3xl border border-border/70 shadow-2xl bg-card/85 backdrop-blur-xl space-y-6">
+      <Link to="/login" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" />
         Back to Sign In
       </Link>
 
       <div>
-        <h1 className="text-3xl font-bold mb-2">Create New Password</h1>
-        <p className="text-muted-foreground">
-          Enter your new password below to complete the reset.
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Create New Password</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Enter your new password below to regain access to your account
         </p>
       </div>
+
+      {error ? (
+        <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium animate-fadeIn">
+          {error}
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="New Password"
           type="password"
-          placeholder="••••••••"
+          placeholder="At least 6 characters"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -105,18 +112,18 @@ export function ResetPassword() {
         <Input
           label="Confirm New Password"
           type="password"
-          placeholder="••••••••"
+          placeholder="Repeat new password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
         />
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-        <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+        <Button type="submit" className="w-full mt-2 h-10" size="lg" disabled={isSubmitting}>
+          <Lock className="w-4 h-4" />
           {isSubmitting ? 'Resetting Password...' : 'Reset Password'}
         </Button>
       </form>
-    </div>
+    </Card>
   );
 }
+

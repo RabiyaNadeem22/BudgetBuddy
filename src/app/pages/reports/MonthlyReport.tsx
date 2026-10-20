@@ -1,7 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend } from 'recharts';
 import { formatCurrency } from '../../lib/utils';
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../lib/apiClient';
@@ -195,33 +195,52 @@ export function MonthlyReport() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={barChartData}>
+                    <BarChart
+                      data={barChartData}
+                      barSize={36}
+                      barCategoryGap="45%"
+                      barGap={6}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--border)"
+                        vertical={false}
+                        opacity={0.5}
+                      />
                       <XAxis
                         dataKey="month"
-                        stroke="#94A3B8"
+                        stroke="var(--muted-foreground)"
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
+                        dy={8}
                       />
                       <YAxis
-                        stroke="#94A3B8"
+                        stroke="var(--muted-foreground)"
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={(value) => `$${value}`}
+                        width={60}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#1E293B',
-                          border: '1px solid #334155',
+                          backgroundColor: 'var(--card)',
+                          border: '1px solid var(--border)',
                           borderRadius: '12px',
+                          color: 'var(--foreground)',
+                          boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
                         }}
                         formatter={(value: number) => formatCurrency(value)}
-                        cursor={{ fill: 'rgba(76, 175, 80, 0.1)' }}
+                        cursor={{ fill: 'var(--muted)', opacity: 0.4, radius: 8 }}
                       />
-                      <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                      <Bar dataKey="income" fill="#4CAF50" radius={[8, 8, 0, 0]} name="Income" />
-                      <Bar dataKey="expenses" fill="#3B82F6" radius={[8, 8, 0, 0]} name="Expenses" />
+                      <Legend
+                        wrapperStyle={{ paddingTop: '20px', fontSize: '13px' }}
+                        iconType="circle"
+                        iconSize={8}
+                      />
+                      <Bar dataKey="income" fill="#4CAF50" radius={[6, 6, 0, 0]} name="Income" maxBarSize={48} />
+                      <Bar dataKey="expenses" fill="#3B82F6" radius={[6, 6, 0, 0]} name="Expenses" maxBarSize={48} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}

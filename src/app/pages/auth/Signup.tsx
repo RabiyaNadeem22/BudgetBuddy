@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router';
 import { useState } from 'react';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { ArrowLeft } from 'lucide-react';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Card } from '../../components/ui/card';
+import { ArrowLeft, UserPlus } from 'lucide-react';
 import { useAppDispatch } from '../../store/hooks';
 import { setCredentials, setLoading } from '../../store/slices/authSlice';
 import { signupUser } from '../../lib/authApi';
@@ -49,16 +50,22 @@ export function Signup() {
   };
 
   return (
-    <div className="space-y-6">
-      <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
+    <Card className="p-8 md:p-10 rounded-3xl border border-border/70 shadow-2xl bg-card/85 backdrop-blur-xl space-y-6">
+      <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" />
-        Back
+        Back to home
       </Link>
 
       <div>
-        <h1 className="text-3xl font-bold mb-2">Create Account</h1>
-        <p className="text-muted-foreground">Start managing your finances today</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Create Account</h1>
+        <p className="text-sm text-muted-foreground mt-1">Start tracking your financial journey today</p>
       </div>
+
+      {error ? (
+        <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium animate-fadeIn">
+          {error}
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
@@ -71,9 +78,9 @@ export function Signup() {
         />
 
         <Input
-          label="Email"
+          label="Email Address"
           type="email"
-          placeholder="john@example.com"
+          placeholder="name@example.com"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           required
@@ -82,43 +89,43 @@ export function Signup() {
         <Input
           label="Password"
           type="password"
-          placeholder="••••••••"
+          placeholder="At least 6 characters"
           value={formData.password}
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           required
         />
 
-        <div>
-          <label htmlFor="currency" className="block mb-2 text-sm text-foreground">
-            Currency
+        <div className="space-y-1.5 text-left">
+          <label htmlFor="currency" className="block text-sm font-medium text-foreground tracking-tight">
+            Preferred Currency
           </label>
           <select
             id="currency"
             value={formData.currency}
             onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-xl bg-input border-2 border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            className="flex h-10 w-full rounded-lg border border-input bg-input-background px-3.5 py-2 text-sm text-foreground transition-all outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
           >
-            <option value="USD">USD - US Dollar</option>
-            <option value="EUR">EUR - Euro</option>
-            <option value="GBP">GBP - British Pound</option>
-            <option value="JPY">JPY - Japanese Yen</option>
-            <option value="AUD">AUD - Australian Dollar</option>
+            <option value="USD">USD ($) - US Dollar</option>
+            <option value="EUR">EUR (€) - Euro</option>
+            <option value="GBP">GBP (£) - British Pound</option>
+            <option value="JPY">JPY (¥) - Japanese Yen</option>
+            <option value="AUD">AUD ($) - Australian Dollar</option>
           </select>
         </div>
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-        <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+        <Button type="submit" className="w-full mt-2 h-10" size="lg" disabled={isSubmitting}>
+          <UserPlus className="w-4 h-4" />
           {isSubmitting ? 'Creating Account...' : 'Create Account'}
         </Button>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground pt-2">
           Already have an account?{' '}
-          <Link to="/login" className="text-primary hover:underline">
+          <Link to="/login" className="text-primary font-medium hover:underline">
             Sign in
           </Link>
         </p>
       </form>
-    </div>
+    </Card>
   );
 }
+

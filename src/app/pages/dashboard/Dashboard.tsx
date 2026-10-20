@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Plus, TrendingUp, TrendingDown, ArrowUpRight } from 'lucide-react';
@@ -53,12 +53,61 @@ interface Budget {
   status: 'good' | 'warning' | 'over';
 }
 
+type SpendingPeriod = 'month' | '3months' | 'all';
+
+const PERIOD_OPTIONS: { label: string; value: SpendingPeriod }[] = [
+  { label: 'This Month', value: 'month' },
+  { label: '3 Months', value: '3months' },
+  { label: 'All Time', value: 'all' },
+];
+
+/** Build query params for the chosen period */
+const getDateParams = (period: SpendingPeriod): string => {
+  const now = new Date();
+  if (period === 'all') {
+    const start = new Date(0).toISOString().split('T')[0];
+    const end = now.toISOString().split('T')[0];
+    return `?startDate=${start}&endDate=${end}`;
+  }
+  if (period === '3months') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+      .toISOString()
+      .split('T')[0];
+    const end = now.toISOString().split('T')[0];
+    return `?startDate=${start}&endDate=${end}`;
+  }
+  return ''; // default: API uses current month
+};
+
 export function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [categoryData, setCategoryData] = useState<{ name: string; value: number; color: string }[]>([]);
   const [budgetProgress, setBudgetProgress] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoryLoading, setCategoryLoading] = useState(false);
   const [error, setError] = useState('');
+  const [spendingPeriod, setSpendingPeriod] = useState<SpendingPeriod>('month');
+
+  const fetchCategoryBreakdown = useCallback(async (period: SpendingPeriod) => {
+    setCategoryLoading(true);
+    try {
+      const params = getDateParams(period);
+      const breakdownRes = await apiClient.get<BreakdownResponse>(
+        `/api/reports/category-breakdown${params}`
+      );
+      setCategoryData(
+        breakdownRes.categories.map((cat) => ({
+          name: cat.name,
+          value: cat.amount,
+          color: cat.color,
+        }))
+      );
+    } catch {
+      // silently fail – main error state handles critical errors
+    } finally {
+      setCategoryLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -90,6 +139,11 @@ export function Dashboard() {
 
     fetchDashboard();
   }, []);
+
+  const handlePeriodChange = (period: SpendingPeriod) => {
+    setSpendingPeriod(period);
+    fetchCategoryBreakdown(period);
+  };
 
   if (loading) {
     return (
@@ -171,12 +225,34 @@ export function Dashboard() {
         {/* Spending by Category */}
         <Card>
           <CardHeader>
-            <CardTitle>Spending by Category</CardTitle>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle>Spending by Category</CardTitle>
+              {/* Period toggle pill */}
+              <div className="flex items-center bg-muted rounded-lg p-1 gap-0.5">
+                {PERIOD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handlePeriodChange(opt.value)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                      spendingPeriod === opt.value
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            {categoryData.length === 0 ? (
+            {categoryLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="w-7 h-7 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : categoryData.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-center px-4">
-                <p>No expenses this month yet.</p>
+                <p>No expenses for this period.</p>
                 <Link to="/app/transactions/add" className="text-primary text-sm mt-2 hover:underline">
                   Add your first transaction
                 </Link>
@@ -202,9 +278,10 @@ export function Dashboard() {
                       <Tooltip
                         formatter={(value: number) => formatCurrency(value)}
                         contentStyle={{
-                          backgroundColor: '#1E293B',
-                          border: '1px solid #334155',
+                          backgroundColor: 'var(--card)',
+                          border: '1px solid var(--border)',
                           borderRadius: '12px',
+                          color: 'var(--foreground)',
                         }}
                       />
                     </PieChart>
